@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Simulator Gerbang Logika & Lampu Lalu Lintas</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F8F9FA;--surface:#FFFFFF;--border:#E5E7EB;--border-soft:#F0F1F3;
+  --text:#1A1D23;--text-2:#6B7280;--text-3:#9CA3AF;
+  --accent:#5048E5;--accent-light:#EEEDFE;
+  --green:#3B6D11;--green-bg:#EAF3DE;
+  --red:#A32D2D;--red-bg:#FCEBEB;
+  --yellow-text:#633806;--yellow-bg:#FAEEDA;
+  --radius:12px;--radius-sm:8px;--radius-pill:99px;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* ── NAV ── */
+.app-nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 1rem;display:flex;align-items:center;gap:0;position:sticky;top:0;z-index:10}
+.app-title{font-size:14px;font-weight:600;color:var(--text);padding:14px 0;margin-right:1.5rem;white-space:nowrap}
+.nav-tab{padding:14px 16px;font-size:13px;font-weight:500;color:var(--text-2);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;background:none;border-left:none;border-right:none;border-top:none}
+.nav-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.nav-tab:hover:not(.active){color:var(--text)}
+
+/* ── SECTIONS ── */
+.section{display:none;padding:1.5rem 1rem;max-width:700px;margin:0 auto}
+.section.visible{display:block}
+
+/* ── GATE SIMULATOR ── */
+.page-title{font-size:20px;font-weight:600;color:var(--text);margin-bottom:4px}
+.page-sub{font-size:13px;color:var(--text-2);margin-bottom:1.5rem;line-height:1.5}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1.5rem}
+.tab{padding:6px 14px;border-radius:var(--radius-pill);border:1px solid var(--border);background:transparent;color:var(--text-2);font-size:13px;cursor:pointer;transition:all .15s}
+.tab.active{background:var(--text);color:#fff;border-color:transparent}
+
+.gate-card{background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--radius);padding:1.25rem;box-shadow:var(--shadow)}
+.gate-header{display:flex;align-items:center;gap:10px;margin-bottom:1rem}
+.gate-badge{padding:4px 12px;border-radius:var(--radius-pill);font-size:12px;font-weight:600}
+.badge-and{background:#EEEDFE;color:#3C3489}
+.badge-or{background:#E6F1FB;color:#0C447C}
+.badge-xor{background:#E1F5EE;color:#085041}
+.badge-not{background:#FAEEDA;color:#633806}
+.badge-nand{background:#FAECE7;color:#712B13}
+.badge-nor{background:#FBEAF0;color:#72243E}
+.badge-xnor{background:#EAF3DE;color:#27500A}
+.gate-title{font-size:16px;font-weight:600;color:var(--text)}
+.gate-desc{font-size:13px;color:var(--text-2);margin-bottom:1rem;line-height:1.6}
+.formula{font-family:'SF Mono',Menlo,monospace;font-size:13px;background:#F3F4F6;padding:8px 12px;border-radius:var(--radius-sm);margin-bottom:1.25rem;color:var(--text)}
+
+.sim-area{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem}
+.inputs-col{display:flex;flex-direction:column;gap:12px}
+.input-row{display:flex;align-items:center;gap:10px}
+.inp-label{font-size:13px;color:var(--text-2);font-weight:600;width:14px}
+.bulb-btn{width:44px;height:44px;border-radius:50%;border:2px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;transition:all .2s;background:#F9FAFB}
+.bulb-btn.on{background:#FAC775;border-color:#EF9F27;box-shadow:0 0 10px #FAC77555}
+.inp-state{font-size:12px;color:var(--text-3)}
+.inp-state.on{color:#EF9F27;font-weight:600}
+
+.wire-svg{flex:1;min-width:100px;max-width:140px}
+.output-col{display:flex;flex-direction:column;align-items:center;gap:6px}
+.out-bulb{width:64px;height:64px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:32px;transition:all .25s;background:#F9FAFB}
+.out-bulb.on{background:#FAC775;border-color:#EF9F27;box-shadow:0 0 16px #FAC77566}
+.out-label{font-size:12px;color:var(--text-2);text-align:center}
+.out-label strong{color:var(--text);display:block;margin-top:2px}
+
+.truth-table{width:100%;border-collapse:collapse;font-size:13px}
+.truth-table th{background:#F9FAFB;color:var(--text-2);font-weight:600;padding:7px 12px;text-align:center;border:1px solid var(--border-soft)}
+.truth-table td{padding:7px 12px;text-align:center;border:1px solid var(--border-soft);color:var(--text)}
+.truth-table tr.active-row td{background:#FFFBEB;font-weight:600}
+.val-1{color:#3B6D11;font-weight:600}
+.val-0{color:#A32D2D}
+
+/* ── TRAFFIC LIGHT ── */
+.scenario-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1.25rem}
+.stab{padding:6px 14px;border-radius:var(--radius-pill);border:1px solid var(--border);background:transparent;color:var(--text-2);font-size:13px;cursor:pointer;transition:all .15s}
+.stab.active{background:var(--text);color:#fff;border-color:transparent}
+
+.card{background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem;box-shadow:var(--shadow)}
+.section-label{font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.75rem}
+.logic-explain{background:#F9FAFB;border-radius:var(--radius-sm);padding:12px 16px;font-size:13px;color:var(--text-2);line-height:1.6;margin-bottom:1rem}
+.logic-explain strong{color:var(--text)}
+
+.sensors-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:1rem}
+.sensor-card{background:#F9FAFB;border-radius:var(--radius-sm);padding:10px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;border:1.5px solid transparent;transition:all .15s;user-select:none}
+.sensor-card.on{border-color:var(--green);background:var(--green-bg)}
+.sensor-dot{width:12px;height:12px;border-radius:50%;background:#D1D5DB;flex-shrink:0;transition:background .2s}
+.sensor-card.on .sensor-dot{background:var(--green)}
+.sensor-info{flex:1}
+.sensor-label{font-size:13px;color:var(--text);font-weight:500;line-height:1.3}
+.sensor-val{font-size:11px;color:var(--text-3);margin-top:2px}
+.sensor-card.on .sensor-val{color:var(--green);font-weight:600}
+
+.formula-box{font-family:'SF Mono',Menlo,monospace;font-size:12px;background:#F3F4F6;padding:10px 14px;border-radius:var(--radius-sm);color:var(--text);line-height:1.8;margin-bottom:1rem;white-space:pre}
+
+.lights-row{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;margin-bottom:1rem}
+.light-box{display:flex;flex-direction:column;align-items:center;gap:8px}
+.light-label{font-size:12px;color:var(--text-2);font-weight:600;text-align:center}
+.traffic-light{background:#1C1C1E;border-radius:10px;padding:8px 7px;display:flex;flex-direction:column;gap:6px;width:38px;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.bulb{width:22px;height:22px;border-radius:50%;background:#2C2C2E;transition:all .25s}
+.bulb.r-on{background:#E24B4A;box-shadow:0 0 8px #E24B4A88}
+.bulb.y-on{background:#EF9F27;box-shadow:0 0 8px #EF9F2788}
+.bulb.g-on{background:#5EB43E;box-shadow:0 0 8px #5EB43E88}
+
+.result-badge{text-align:center;font-size:13px;padding:10px 14px;border-radius:var(--radius-sm);font-weight:500;line-height:1.5}
+.result-green{background:var(--green-bg);color:var(--green)}
+.result-red{background:var(--red-bg);color:var(--red)}
+.result-yellow{background:var(--yellow-bg);color:var(--yellow-text)}
+
+.auto-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:.75rem}
+.auto-btn{padding:7px 16px;border-radius:var(--radius-pill);background:var(--accent);color:#fff;border:none;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s}
+.auto-btn:hover{background:#3D36C4}
+.auto-btn.running{background:#DC2626}
+.timer-bar{flex:1;min-width:100px;height:5px;background:#F3F4F6;border-radius:3px;overflow:hidden}
+.timer-fill{height:100%;background:var(--accent);border-radius:3px;transition:width .1s linear}
+.auto-status{font-size:12px;color:var(--text-3)}
+</style>
+</head>
+<body>
+
+<nav class="app-nav">
+  <span class="app-title">🔌 LogiSim</span>
+  <button class="nav-tab active" onclick="switchSection('gates')">Gerbang Logika</button>
+  <button class="nav-tab" onclick="switchSection('traffic')">Lampu Lalu Lintas</button>
+</nav>
+
+<!-- ══════════════ SECTION: GATES ══════════════ -->
+<div class="section visible" id="sec-gates">
+  <h1 class="page-title">Simulator Gerbang Logika</h1>
+  <p class="page-sub">Klik tombol input 💡 untuk toggle ON/OFF — lihat output berubah sesuai logika gerbang.</p>
+  <div class="tabs" id="gate-tabs"></div>
+  <div id="gate-area"></div>
+</div>
+
+<!-- ══════════════ SECTION: TRAFFIC ══════════════ -->
+<div class="section" id="sec-traffic">
+  <h1 class="page-title">Lampu Lalu Lintas Cerdas</h1>
+  <p class="page-sub">Sensor kendaraan mengirim sinyal 0/1. Gerbang logika menentukan lampu mana yang harus menyala.</p>
+  <div class="scenario-tabs" id="stabs"></div>
+
+  <div class="card">
+    <div class="section-label">Kondisi & Sensor</div>
+    <div class="logic-explain" id="logic-explain"></div>
+    <div class="sensors-grid" id="sensors-grid"></div>
+    <div class="section-label">Formula Logika</div>
+    <div class="formula-box" id="formula-area"></div>
+    <div class="section-label">Output Lampu</div>
+    <div class="lights-row" id="lights-row"></div>
+    <div id="result-area"></div>
+  </div>
+
+  <div class="card">
+    <div class="section-label">Mode Otomatis</div>
+    <div class="auto-bar">
+      <button class="auto-btn" id="auto-btn" onclick="toggleAuto()">▶ Jalankan Otomatis</button>
+      <div class="timer-bar"><div class="timer-fill" id="timer-fill" style="width:0%"></div></div>
+      <span class="auto-status" id="auto-status">Idle</span>
+    </div>
+    <p style="font-size:12px;color:var(--text-3)">Simulasi perubahan kondisi lalu lintas secara otomatis setiap 3 detik.</p>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════
+   SECTION SWITCHER
+════════════════════════════════ */
+function switchSection(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('visible'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('visible');
+  event.currentTarget.classList.add('active');
+}
+
+/* ════════════════════════════════
+   GATE SIMULATOR
+════════════════════════════════ */
+const GATES=[
+  {id:'and',name:'AND Gate',badge:'badge-and',
+   desc:'Output menyala (1) hanya jika SEMUA input menyala (1). Seperti dua saklar seri — keduanya harus ON.',
+   formula:'Y = A AND B',inputs:2,fn:(a,b)=>a&&b?1:0,
+   truth:[[0,0,0],[0,1,0],[1,0,0],[1,1,1]]},
+  {id:'or',name:'OR Gate',badge:'badge-or',
+   desc:'Output menyala (1) jika SALAH SATU atau lebih input menyala. Seperti dua saklar paralel.',
+   formula:'Y = A OR B',inputs:2,fn:(a,b)=>a||b?1:0,
+   truth:[[0,0,0],[0,1,1],[1,0,1],[1,1,1]]},
+  {id:'xor',name:'XOR Gate',badge:'badge-xor',
+   desc:'Output menyala (1) hanya jika TEPAT SATU input menyala. Jika keduanya sama, output mati.',
+   formula:'Y = A XOR B',inputs:2,fn:(a,b)=>(a^b),
+   truth:[[0,0,0],[0,1,1],[1,0,1],[1,1,0]]},
+  {id:'not',name:'NOT Gate',badge:'badge-not',
+   desc:'Membalik input. Jika input menyala (1), output mati (0). Disebut juga inverter.',
+   formula:'Y = NOT A',inputs:1,fn:(a)=>a?0:1,
+   truth:[[0,1],[1,0]]},
+  {id:'nand',name:'NAND Gate',badge:'badge-nand',
+   desc:'Kebalikan AND. Output MATI hanya saat semua input menyala. Disebut universal gate.',
+   formula:'Y = NOT (A AND B)',inputs:2,fn:(a,b)=>!(a&&b)?1:0,
+   truth:[[0,0,1],[0,1,1],[1,0,1],[1,1,0]]},
+  {id:'nor',name:'NOR Gate',badge:'badge-nor',
+   desc:'Kebalikan OR. Output menyala (1) hanya jika SEMUA input mati (0).',
+   formula:'Y = NOT (A OR B)',inputs:2,fn:(a,b)=>!(a||b)?1:0,
+   truth:[[0,0,1],[0,1,0],[1,0,0],[1,1,0]]},
+  {id:'xnor',name:'XNOR Gate',badge:'badge-xnor',
+   desc:'Kebalikan XOR. Output menyala (1) jika kedua input SAMA. Digunakan mendeteksi kesamaan.',
+   formula:'Y = NOT (A XOR B)',inputs:2,fn:(a,b)=>(a^b)?0:1,
+   truth:[[0,0,1],[0,1,0],[1,0,0],[1,1,1]]}
+];
+
+let gCurrent='and', gState={A:0,B:0};
+
+function gRender(){
+  const g=GATES.find(x=>x.id===gCurrent);
+  const out=g.inputs===1?g.fn(gState.A):g.fn(gState.A,gState.B);
+
+  const aOn=gState.A, bOn=gState.B;
+  const wireColor=(v)=>v?'#EF9F27':'#D1D5DB';
+
+  const wireSVG=g.inputs===1
+    ?`<svg class="wire-svg" viewBox="0 0 110 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <line x1="5" y1="40" x2="38" y2="40" stroke="${wireColor(aOn)}" stroke-width="2.5" stroke-linecap="round"/>
+        <rect x="38" y="18" width="34" height="44" rx="6" fill="${aOn?'#EEEDFE':'#F3F4F6'}" stroke="${aOn?'#7F77DD':'#D1D5DB'}" stroke-width="1.5"/>
+        <text x="55" y="44" font-size="9" text-anchor="middle" fill="${aOn?'#3C3489':'#9CA3AF'}" font-family="monospace" font-weight="600">NOT</text>
+        <line x1="72" y1="40" x2="105" y2="40" stroke="${wireColor(out)}" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>`
+    :`<svg class="wire-svg" viewBox="0 0 130 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <line x1="5" y1="32" x2="48" y2="32" stroke="${wireColor(aOn)}" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="5" y1="68" x2="48" y2="68" stroke="${wireColor(bOn)}" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="48" y1="32" x2="48" y2="50" stroke="${wireColor(aOn)}" stroke-width="2"/>
+        <line x1="48" y1="68" x2="48" y2="50" stroke="${wireColor(bOn)}" stroke-width="2"/>
+        <rect x="48" y="26" width="38" height="48" rx="6" fill="#F3F4F6" stroke="#D1D5DB" stroke-width="1.5"/>
+        <text x="67" y="53" font-size="8" text-anchor="middle" fill="#6B7280" font-family="monospace" font-weight="700">${g.id.toUpperCase()}</text>
+        <line x1="86" y1="50" x2="125" y2="50" stroke="${wireColor(out)}" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>`;
+
+  const inputsHTML=g.inputs===1
+    ?`<div class="input-row">
+        <span class="inp-label">A</span>
+        <button class="bulb-btn${gState.A?' on':''}" onclick="gToggle('A')">💡</button>
+        <span class="inp-state${gState.A?' on':''}">${gState.A?'ON':'OFF'}</span>
+      </div>`
+    :`<div class="input-row">
+        <span class="inp-label">A</span>
+        <button class="bulb-btn${gState.A?' on':''}" onclick="gToggle('A')">💡</button>
+        <span class="inp-state${gState.A?' on':''}">${gState.A?'ON':'OFF'}</span>
+      </div>
+      <div class="input-row">
+        <span class="inp-label">B</span>
+        <button class="bulb-btn${gState.B?' on':''}" onclick="gToggle('B')">💡</button>
+        <span class="inp-state${gState.B?' on':''}">${gState.B?'ON':'OFF'}</span>
+      </div>`;
+
+  const thCols=g.inputs===1?'<th>A</th><th>Y</th>':'<th>A</th><th>B</th><th>Y</th>';
+  const rows=g.truth.map(row=>{
+    const active=row[0]===gState.A&&(g.inputs===1||row[1]===gState.B);
+    const cells=row.map(v=>`<td class="${active?'':'val-'+v}">${v}</td>`).join('');
+    return `<tr class="${active?'active-row':''}">${cells}</tr>`;
+  }).join('');
+
+  document.getElementById('gate-area').innerHTML=`
+    <div class="gate-card">
+      <div class="gate-header">
+        <span class="gate-badge ${g.badge}">${g.id.toUpperCase()}</span>
+        <span class="gate-title">${g.name}</span>
+      </div>
+      <p class="gate-desc">${g.desc}</p>
+      <div class="formula">${g.formula}</div>
+      <div class="sim-area">
+        <div class="inputs-col">${inputsHTML}</div>
+        ${wireSVG}
+        <div class="output-col">
+          <div class="out-bulb${out?' on':''}">💡</div>
+          <div class="out-label">Output Y<strong>${out?'ON (1)':'OFF (0)'}</strong></div>
+        </div>
+      </div>
+      <table class="truth-table">
+        <thead><tr>${thCols}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function gToggle(inp){gState[inp]=gState[inp]?0:1;gRender();}
+
+function gSwitch(id){
+  gCurrent=id;gState={A:0,B:0};
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.id===id));
+  gRender();
+}
+
+const gTabsEl=document.getElementById('gate-tabs');
+GATES.forEach(g=>{
+  const b=document.createElement('button');
+  b.className='tab'+(g.id==='and'?' active':'');
+  b.dataset.id=g.id;b.textContent=g.id.toUpperCase();
+  b.onclick=()=>gSwitch(g.id);
+  gTabsEl.appendChild(b);
+});
+gRender();
+
+/* ════════════════════════════════
+   TRAFFIC LIGHT SIMULATOR
+════════════════════════════════ */
+const SCENARIOS=[
+  {
+    id:'basic',name:'AND: 2 Sensor',
+    desc:'Lampu hijau hanya menyala jika <strong>sensor utama (A) AND sensor konfirmasi (B)</strong> sama-sama mendeteksi kendaraan. Mencegah lampu hijau palsu.',
+    sensors:[
+      {id:'A',label:'Sensor Utama (A)',desc:'Kendaraan di garis stop'},
+      {id:'B',label:'Sensor Konfirmasi (B)',desc:'Antrian minimal 2 mobil'}
+    ],
+    formula:'Hijau  = A AND B\nMerah  = NOT (A AND B)',
+    lights:['NS'],
+    compute(s){
+      const go=s.A&&s.B;
+      return{NS:go?'green':'red',reason:go?'A=1 AND B=1 → HIJAU: kendaraan & antrian terdeteksi':`A=${s.A} AND B=${s.B} → MERAH: syarat belum terpenuhi`};
+    },
+    autoStates:[{A:0,B:0},{A:1,B:0},{A:1,B:1},{A:0,B:1}]
+  },
+  {
+    id:'twoway',name:'XOR: 2 Arah',
+    desc:'Dua jalan bertemu. <strong>NS AND NOT EW</strong> → Utara-Selatan hijau. <strong>EW AND NOT NS</strong> → Timur-Barat hijau. Jika keduanya ada kendaraan, keduanya kuning (konflik).',
+    sensors:[
+      {id:'NS',label:'Sensor Utara-Selatan',desc:'Kendaraan di jalan NS'},
+      {id:'EW',label:'Sensor Timur-Barat',desc:'Kendaraan di jalan EW'}
+    ],
+    formula:'NS Hijau = NS AND NOT EW\nEW Hijau = EW AND NOT NS\nKonflik  = NS AND EW  → Kuning',
+    lights:['NS','EW'],
+    compute(s){
+      const nsGo=s.NS&&!s.EW,ewGo=s.EW&&!s.NS,conflict=s.NS&&s.EW;
+      return{
+        NS:conflict?'yellow':(nsGo?'green':'red'),
+        EW:conflict?'yellow':(ewGo?'green':'red'),
+        reason:conflict?'NS=1 AND EW=1 → KONFLIK: kedua jalan kuning':
+          nsGo?'NS AND NOT EW → Utara-Selatan HIJAU':
+          ewGo?'EW AND NOT NS → Timur-Barat HIJAU':'Tidak ada kendaraan → semua MERAH'
+      };
+    },
+    autoStates:[{NS:0,EW:0},{NS:1,EW:0},{NS:0,EW:1},{NS:1,EW:1}]
+  },
+  {
+    id:'pejalan',name:'NAND: Pejalan Kaki',
+    desc:'Pejalan kaki menekan tombol (P). Kendaraan di depan dideteksi sensor (V). Lampu <strong>kendaraan tetap hijau KECUALI</strong> P=1 AND V=0 (tombol ditekan & jalan kosong).',
+    sensors:[
+      {id:'P',label:'Tombol Pejalan (P)',desc:'Pejalan menekan tombol'},
+      {id:'V',label:'Sensor Kendaraan (V)',desc:'Kendaraan sedang melintas'}
+    ],
+    formula:'Kendaraan Hijau = NOT (P AND NOT V)\n                = NAND(P, NOT V)\nPejalan Hijau  = P AND NOT V',
+    lights:['Kendaraan','Pejalan'],
+    compute(s){
+      const pedGo=s.P&&!s.V;
+      const carGo=!pedGo;
+      return{
+        Kendaraan:carGo?'green':'red',
+        Pejalan:pedGo?'green':'red',
+        reason:pedGo?'P=1 AND V=0 → Pejalan HIJAU, kendaraan MERAH':
+          s.P&&s.V?'P=1 AND V=1 → Kendaraan melintas, kendaraan HIJAU':
+          !s.P?'P=0 → Tidak ada permintaan, kendaraan HIJAU':'Kendaraan HIJAU'
+      };
+    },
+    autoStates:[{P:0,V:0},{P:1,V:0},{P:1,V:1},{P:0,V:1}]
+  },
+  {
+    id:'darurat',name:'NOR: Mode Darurat',
+    desc:'Kendaraan darurat terdeteksi sensor (E). Sistem pakai <strong>NOR</strong>: semua lampu normal MATI jika ada kendaraan darurat. Output=1 hanya saat E=0 (aman).',
+    sensors:[
+      {id:'E',label:'Sensor Darurat (E)',desc:'Kendaraan darurat terdeteksi'},
+      {id:'N',label:'Kondisi Normal (N)',desc:'Lalu lintas normal aktif'}
+    ],
+    formula:'Aman   = NOR(E, 0) = NOT E\nHijau  = N AND NOT E\nDarurat= E  → Semua merah/hazard',
+    lights:['NS','EW'],
+    compute(s){
+      const emg=s.E;
+      return{
+        NS:emg?'red':(s.N?'green':'red'),
+        EW:emg?'yellow':'red',
+        reason:emg?'E=1 → DARURAT: semua lampu merah/hazard':
+          s.N?'NOR(E,0)=1 AND N=1 → Lalu lintas normal HIJAU':'E=0 N=0 → Menunggu kendaraan'
+      };
+    },
+    autoStates:[{E:0,N:0},{E:0,N:1},{E:1,N:0},{E:1,N:1}]
+  }
+];
+
+let tCurrent='basic', tState={}, autoRunning=false, autoTimer=null, autoStep=0, autoProgress=0;
+
+function tRender(){
+  const sc=SCENARIOS.find(x=>x.id===tCurrent);
+  const result=sc.compute(tState);
+
+  // logic explain
+  document.getElementById('logic-explain').innerHTML=sc.desc;
+
+  // sensors
+  document.getElementById('sensors-grid').innerHTML=sc.sensors.map(sen=>`
+    <div class="sensor-card${tState[sen.id]?' on':''}" onclick="tToggle('${sen.id}')">
+      <div class="sensor-dot"></div>
+      <div class="sensor-info">
+        <div class="sensor-label">${sen.label}</div>
+        <div class="sensor-val">${tState[sen.id]?'Aktif (1)':'Tidak aktif (0)'}</div>
+      </div>
+    </div>`).join('');
+
+  // formula
+  document.getElementById('formula-area').textContent=sc.formula;
+
+  // lights
+  const lightColors={NS:result.NS,EW:result.EW,Kendaraan:result.Kendaraan,Pejalan:result.Pejalan};
+  document.getElementById('lights-row').innerHTML=sc.lights.map(lbl=>{
+    const c=lightColors[lbl]||'red';
+    return`<div class="light-box">
+      <div class="light-label">${lbl}</div>
+      <div class="traffic-light">
+        <div class="bulb${c==='red'?' r-on':''}"></div>
+        <div class="bulb${c==='yellow'?' y-on':''}"></div>
+        <div class="bulb${c==='green'?' g-on':''}"></div>
+      </div>
+      <div style="font-size:11px;color:var(--text-3);margin-top:2px">${c.toUpperCase()}</div>
+    </div>`;
+  }).join('');
+
+  // result
+  const cls=result.reason.includes('HIJAU')?'result-green':result.reason.includes('KUNING')||result.reason.includes('kuning')||result.reason.includes('KONFLIK')?'result-yellow':'result-red';
+  document.getElementById('result-area').innerHTML=`<div class="result-badge ${cls}">${result.reason}</div>`;
+}
+
+function tToggle(id){tState[id]=tState[id]?0:1;tRender();}
+
+function tSwitch(id){
+  tCurrent=id;
+  const sc=SCENARIOS.find(x=>x.id===id);
+  tState={};sc.sensors.forEach(s=>tState[s.id]=0);
+  document.querySelectorAll('.stab').forEach(t=>t.classList.toggle('active',t.dataset.id===id));
+  stopAuto();
+  tRender();
+}
+
+// scenario tabs
+const stabsEl=document.getElementById('stabs');
+SCENARIOS.forEach(sc=>{
+  const b=document.createElement('button');
+  b.className='stab'+(sc.id==='basic'?' active':'');
+  b.dataset.id=sc.id;b.textContent=sc.name;
+  b.onclick=()=>tSwitch(sc.id);
+  stabsEl.appendChild(b);
+});
+
+// init
+(function(){
+  const sc=SCENARIOS[0];
+  tState={};sc.sensors.forEach(s=>tState[s.id]=0);
+  tRender();
+})();
+
+// auto mode
+const INTERVAL=3000;
+function toggleAuto(){
+  autoRunning?stopAuto():startAuto();
+}
+function startAuto(){
+  autoRunning=true;autoStep=0;autoProgress=0;
+  document.getElementById('auto-btn').textContent='⏹ Stop';
+  document.getElementById('auto-btn').classList.add('running');
+  runStep();
+}
+function stopAuto(){
+  autoRunning=false;
+  clearInterval(autoTimer);
+  document.getElementById('auto-btn').textContent='▶ Jalankan Otomatis';
+  document.getElementById('auto-btn').classList.remove('running');
+  document.getElementById('timer-fill').style.width='0%';
+  document.getElementById('auto-status').textContent='Idle';
+}
+function runStep(){
+  if(!autoRunning)return;
+  const sc=SCENARIOS.find(x=>x.id===tCurrent);
+  const states=sc.autoStates;
+  const s=states[autoStep%states.length];
+  Object.assign(tState,s);
+  tRender();
+  document.getElementById('auto-status').textContent=`Kondisi ${(autoStep%states.length)+1}/${states.length}`;
+  autoStep++;
+  let pct=0;
+  clearInterval(autoTimer);
+  autoTimer=setInterval(()=>{
+    pct+=100/(INTERVAL/100);
+    document.getElementById('timer-fill').style.width=Math.min(pct,100)+'%';
+    if(pct>=100){clearInterval(autoTimer);runStep();}
+  },100);
+}
+</script>
+</body>
+</html>
